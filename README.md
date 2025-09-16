@@ -12,6 +12,23 @@ The system automatically fetches and processes historical data for both the GIST
 
 ---
 
+## Data Sources / 数据来源
+
+This project utilizes two primary data sources:
+本项目利用了两个主要数据来源：
+
+1.  **GISTEMP v4:** The Global Land-Ocean Temperature Index.
+    - **Provider:** NASA's Goddard Institute for Space Studies (GISS).
+    - **Usage:** Provided locally as `GLB.Ts+dSST.txt`.
+    - **Original Source:** [https://data.giss.nasa.gov/gistemp/tabledata_v4/GLB.Ts+dSST.txt](https://data.giss.nasa.gov/gistemp/tabledata_v4/GLB.Ts+dSST.txt)
+
+2.  **ENSO (Niño 3.4 Index):** Monthly sea surface temperature anomalies.
+    - **Provider:** NOAA's Climate Prediction Center (CPC).
+    - **Usage:** Fetched automatically by the script from the URL specified in `config.py`.
+    - **Source:** [https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt](https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt)
+
+---
+
 ## Core Workflow: The Adaptive Forecasting Strategy / 核心流程：自适应预测策略
 
 The script implements a two-stage adaptive forecasting system to ensure the final prediction is based on the most effective model configuration for the current climate context.
