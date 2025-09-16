@@ -109,3 +109,65 @@ The script will perform all steps automatically and print a detailed report.
 
 4.  **Final Forecast:** Finally, it will use the champion model to perform the definitive forecast, showing the dynamically predicted ENSO value it used, the final predicted mean temperature anomaly, and the full probability distribution across your defined bins.
     **最终预测：** 最后，它会使用冠军模型执行最终预测，显示其动态推算出的ENSO值、最终预测的期望均值，以及覆盖您所定义区间的一个完整概率分布报告。
+
+---
+
+## Example Output / 输出示例
+
+```bash
+--- 数据准备阶段 (Data Preparation Stage) ---
+所有训练和测试将基于1970年之后的数据 (All training and testing will be based on data since 1970). 范围 (Range): 1970-01 to 2025-08
+
+--- [第一部分 / Part 1] 开始执行“赛马”实验，寻找最优训练周期 (Starting "Horse Race" to find the optimal training period) ---
+
+--- 正在执行 (Executing): -18个月 赛道 (Lane) ---
+      训练集截止 (Train End): 2024-03, 测试集 (Test Set): 2024-04 to 2025-08
+      ...完成 (Completed)。RMSE: 10.13
+
+--- 正在执行 (Executing): -21个月 赛道 (Lane) ---
+      训练集截止 (Train End): 2023-12, 测试集 (Test Set): 2024-01 to 2025-08
+      ...完成 (Completed)。RMSE: 9.86
+
+--- 正在执行 (Executing): -24个月 赛道 (Lane) ---
+      训练集截止 (Train End): 2023-09, 测试集 (Test Set): 2023-10 to 2025-08
+      ...完成 (Completed)。RMSE: 8.78
+
+--- 正在执行 (Executing): -27个月 赛道 (Lane) ---
+      训练集截止 (Train End): 2023-06, 测试集 (Test Set): 2023-07 to 2025-08
+      ...完成 (Completed)。RMSE: 22.09
+
+--- 正在执行 (Executing): -30个月 赛道 (Lane) ---
+      训练集截止 (Train End): 2023-03, 测试集 (Test Set): 2023-04 to 2025-08
+      ...完成 (Completed)。RMSE: 21.90
+
+--- [第二部分 / Part 2] “赛马”实验完成，执行最终预测 (Horse Race complete, executing final forecast) ---
+
+--- “赛马”结果总结 (Horse Race Results Summary) ---
+回测偏移 (Offset) | RMSE   | 胜出? (Champion?)
+-----------------|--------|-----------------
+-18              | 10.13  |
+-21              | 9.86   |
+-24              | 8.78   |  * 
+-27              | 22.09  |
+-30              | 21.90  |
+
+冠军模型 (Champion Model): -24个月的训练周期 (training period), 训练至 (trained until) 2023-09).
+现在将使用此‘冠军’配置进行最终预测 (Now using this 'champion' configuration for the final forecast)...
+
+正在为ENSO数据本身建立预测模型 (Building forecast model for ENSO data itself)...
+      ...动态预测出未来 1 个月的ENSO异常值为 (Dynamically forecasted ENSO anomaly for the next 1 month(s) is): -0.37
+
+正在使用冠军配置训练最终模型并进行预测 (Training and forecasting with champion configuration)...
+
+--- 最终预测结果分析 (冠军模型) / Final Forecast Analysis (Champion Model) ---
+> 目标月份 (Target Month): 202509
+> 预测的期望值 (Predicted Mean): 123.73
+
+--- 模型预测概率分布 (Model's Predicted Probability Distribution) ---
+  - 区间 (Bin) '<100': 1.04%
+  - 区间 (Bin) '100-104': 1.93%
+  - 区间 (Bin) '105-109': 4.43%
+  - 区间 (Bin) '110-114': 8.19%
+  - 区间 (Bin) '115-119': 12.21%
+  - 区间 (Bin) '>119': 67.08%
+```
