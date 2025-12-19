@@ -3,7 +3,7 @@
 # ==========================================
 
 # 1. 需要预测的年月，格式：YYYYMM
-TARGET_YYYYMM = "202509"
+TARGET_YYYYMM = "202512"
 
 # 2. 数据文件的本地路径
 # https://data.giss.nasa.gov/gistemp/tabledata_v4/GLB.Ts+dSST.txt
@@ -11,6 +11,9 @@ DATA_FILE_PATH = "GLB.Ts+dSST.txt"
 
 # 3. ENSO(厄尔尼诺)数据源地址
 ENSO_DATA_URL = "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt"
+
+# 4. 赛马实验的训练周期选项（单位：月）
+RACE_SPLIT_MONTHS = [15, 18, 21, 24, 27, 30, 33, 36]
 
 
 
@@ -28,10 +31,10 @@ PREDICTION_BINS = {
 
 # 6. 主流观点对各区间的概率预测
 MAINSTREAM_PROBS = {
-    '<100': 0.006,
-    '100-104': 0.015,
-    '105-109': 0.014,
-    '110-114': 0.14,
-    '115-119': 0.41,
-    '>119': 0.49,
+    '<100': 0.32,
+    '100-104': 0.55,
+    '105-109': 0.08,
+    '110-114': 0.05,
+    '115-119': 0.01,
+    '>119': 0.01,
 }

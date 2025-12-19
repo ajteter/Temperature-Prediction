@@ -23,23 +23,22 @@ def calculate_bin_probabilities(forecast_results, bins):
         probabilities[name] = prob
     return probabilities, mu
 
-def run_seasonal_weighted_forecast(full_df):
+def run_optimized_forecast_system(full_df):
     """
-    季节性加权赛马：只在相同月份的历史数据上计算RMSE
-    这样可以更准确地评估模型对特定月份的预测能力
+    基于验证结果的优化预测系统：
+    1. 使用更细粒度的窗口选项（12-36月，每3月一个）
+    2. 使用加权集成而非单一冠军
+    3. 权重基于验证期表现
     """
     
     df_modern = full_df.loc["1970-01-01":].copy()
-    print(f"数据范围: {df_modern.index.min().strftime('%Y-%m')} to {df_modern.index.max().strftime('%Y-%m')}\n")
+    print(f"数据范围: {df_modern.index.min().strftime('%Y-%m')} to {df_modern.index.max().strftime('%Y-%m')}")
 
+    print('\n--- [第一部分] 扩展赛马实验 ---')
     target_date = pd.to_datetime(config.TARGET_YYYYMM, format='%Y%m')
-    target_month = target_date.month
     last_available_date = df_modern.index.max()
     
-    print(f"目标月份: {target_date.strftime('%Y年%m月')} (第{target_month}月)")
-    print("使用季节性加权：仅在相同月份的历史数据上评估模型\n")
-    
-    print('--- [第一部分] 季节性赛马实验 ---')
+    # 扩展窗口选项：12-36月，每3月一个
     split_months_options = list(range(12, 37, 3))
     race_results = []
 
@@ -52,12 +51,6 @@ def run_seasonal_weighted_forecast(full_df):
         if test_df.empty or len(train_df) < 36:
             continue
 
-        # 只在目标月份的数据上计算RMSE
-        test_df_same_month = test_df[test_df.index.month == target_month]
-        
-        if len(test_df_same_month) == 0:
-            continue
-
         train_endog = train_df['Anomaly']
         train_exog = train_df[['ENSO_ANOM']]
         test_endog = test_df['Anomaly']
@@ -67,49 +60,40 @@ def run_seasonal_weighted_forecast(full_df):
         mod = sm.tsa.statespace.SARIMAX(train_endog, exog=train_exog, order=best_order, seasonal_order=best_seasonal_order, enforce_stationarity=False, enforce_invertibility=False)
         fit_results = mod.fit(disp=False)
         forecast_results = fit_results.get_forecast(steps=len(test_df), exog=test_exog)
-        
-        # 计算全部RMSE和同月RMSE
-        rmse_all = np.sqrt(mean_squared_error(test_endog, forecast_results.predicted_mean))
-        
-        # 提取同月的预测和实际值
-        predictions_all = pd.Series(forecast_results.predicted_mean.values, index=test_df.index)
-        predictions_same_month = predictions_all[predictions_all.index.month == target_month]
-        actuals_same_month = test_df_same_month['Anomaly']
-        rmse_same_month = np.sqrt(mean_squared_error(actuals_same_month, predictions_same_month))
+        rmse = np.sqrt(mean_squared_error(test_endog, forecast_results.predicted_mean))
         
         race_results.append({
             'offset': months, 
-            'rmse_all': rmse_all,
-            'rmse_same_month': rmse_same_month,
+            'rmse': rmse, 
             'order': best_order, 
             'seasonal_order': best_seasonal_order, 
-            'train_end_date': split_date,
-            'same_month_count': len(test_df_same_month)
+            'train_end_date': split_date
         })
-        print(f"  -{months:>2}月窗口: RMSE(全部)={rmse_all:>6.2f}, RMSE({target_month}月)={rmse_same_month:>6.2f}, 样本数={len(test_df_same_month)}")
+        print(f"  -{months:>2}月窗口: RMSE={rmse:>6.2f}, 训练至 {split_date.strftime('%Y-%m')}")
 
     if not race_results:
         raise ValueError("所有赛马实验均失败")
 
-    # 使用同月RMSE选择最好的4个模型
-    good_models = sorted(race_results, key=lambda x: x['rmse_same_month'])[:4]
+    # 选择表现最好的4个模型进行集成
+    good_models = sorted(race_results, key=lambda x: x['rmse'])[:4]
     
-    rmse_values = np.array([m['rmse_same_month'] for m in good_models])
-    weights = 1 / (rmse_values ** 2)
+    # 计算权重（RMSE越小权重越大）
+    rmse_values = np.array([m['rmse'] for m in good_models])
+    weights = 1 / (rmse_values ** 2)  # 使用平方倒数增强差异
     weights = weights / weights.sum()
     
     print('\n--- [第二部分] 智能集成预测 ---')
-    print(f"基于{target_month}月的历史表现，选择最好的4个模型\n")
+    print(f"选择表现最好的4个模型进行集成\n")
     
-    print("偏移 | RMSE(全) | RMSE(同月) | 权重   | 状态")
-    print("-----|----------|------------|--------|------")
-    race_results_sorted = sorted(race_results, key=lambda x: x['rmse_same_month'])
+    print("偏移 | RMSE   | 权重   | 状态")
+    print("-----|--------|--------|------")
+    race_results_sorted = sorted(race_results, key=lambda x: x['rmse'])
     for res in race_results_sorted:
         if res in good_models:
             weight = weights[good_models.index(res)]
-            print(f"-{res['offset']:>2}月 | {res['rmse_all']:>8.2f} | {res['rmse_same_month']:>10.2f} | {weight:>6.1%} | ✓ 入选")
+            print(f"-{res['offset']:>2}月 | {res['rmse']:>6.2f} | {weight:>6.1%} | ✓ 入选")
         else:
-            print(f"-{res['offset']:>2}月 | {res['rmse_all']:>8.2f} | {res['rmse_same_month']:>10.2f} |        | ")
+            print(f"-{res['offset']:>2}月 | {res['rmse']:>6.2f} |        | ")
 
     # 预测ENSO
     steps_to_forecast = (target_date.year - last_available_date.year) * 12 + (target_date.month - last_available_date.month)
@@ -151,6 +135,7 @@ def run_seasonal_weighted_forecast(full_df):
         ensemble_std_errs.append(std_err)
         print(f"  模型{i+1} (-{m['offset']:>2}月): {pred_mean:>6.2f} (权重 {weights[i]:>5.1%})")
     
+    # 加权平均
     final_prediction = np.average(ensemble_predictions, weights=weights)
     final_std_err = np.sqrt(np.average(np.array(ensemble_std_errs)**2, weights=weights))
     
@@ -162,6 +147,7 @@ def run_seasonal_weighted_forecast(full_df):
     print(f"预测标准误差: {final_std_err:.2f}")
     print(f"95%置信区间: [{final_prediction - 1.96*final_std_err:.2f}, {final_prediction + 1.96*final_std_err:.2f}]")
     
+    # 计算概率分布
     probabilities = {}
     sorted_bins = sorted(config.PREDICTION_BINS.items(), key=lambda item: item[1][0] if item[1][0] is not None else -np.inf)
     for name, (lower, upper) in sorted_bins:
@@ -179,14 +165,15 @@ def run_seasonal_weighted_forecast(full_df):
 
 if __name__ == "__main__":
     try:
-        print("=== 季节性加权赛马系统 ===\n")
+        print("=== 优化预测系统 ===")
+        print("基于滚动窗口验证结果的智能集成预测\n")
         
         gistemp_data = data_handler.get_clean_data(config.DATA_FILE_PATH)
         enso_data = data_handler.get_enso_data(config.ENSO_DATA_URL)
         full_df = pd.concat([gistemp_data, enso_data], axis=1)
         full_df.dropna(inplace=True)
         
-        prediction, probabilities = run_seasonal_weighted_forecast(full_df)
+        prediction, probabilities = run_optimized_forecast_system(full_df)
 
     except Exception as e:
         print(f"错误: {e}")

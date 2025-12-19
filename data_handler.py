@@ -36,7 +36,7 @@ def get_clean_data(file_path):
     df_long['Month_Num'] = df_long['Month_Num'].astype(int)
     df_long['Date'] = pd.to_datetime(df_long['Year'].astype(str) + '-' + df_long['Month_Num'].astype(str))
     df_long.set_index('Date', inplace=True)
-    df_long['Anomaly'] = pd.to_numeric(df_long['Anomaly'], errors='coerce')
+    df_long['Anomaly'] = pd.to_numeric(df_long['Anomaly'], errors='coerce') / 100 # Correct scaling
     df_long.sort_index(inplace=True)
     last_valid_index = df_long['Anomaly'].last_valid_index()
     if last_valid_index is not None:
