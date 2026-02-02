@@ -27,6 +27,35 @@ This project utilizes two primary data sources:
     - **Usage:** Fetched automatically by the script from the URL specified in `config.py`.
     - **Source:** [https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt](https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt)
 
+
+---
+
+## Recent Updates: The "Robust" Methodology (Nov 2025) / 最新更新：“稳健”方法论 (2025.11)
+
+Based on the findings in `20251128.md` and `validation_report.md`, the project has evolved to a "Robust Edition" (`main_robust.py`) to address key physical and statistical disconnects found in earlier versions.
+
+基于 `20251128.md` 和 `validation_report.md` 的发现，本项目已升级为“稳健版” (`main_robust.py`)，以解决早期版本中发现的关键物理和统计脱节问题。
+
+### Key Improvements / 关键改进
+
+1.  **Physics-Informed Lag (Lag-3) / 基于物理的滞后 (Lag-3)**
+    *   **Problem:** Previous models used "same-month" ENSO data, ignoring the thermal inertia required for Pacific sea surface temperatures to affect global atmospheric temperatures. This caused a ~3-month lag in predicting sudden climate shifts.
+    *   **Solution:** Analysis (`analyze_lags.py`) confirmed a max correlation at **3 months**. The model now correctly uses ENSO signals from 3 months prior to predict the current month's temperature.
+    *   **问题：** 之前的模型使用“当月”ENSO数据，忽略了太平洋海温影响全球大气温度所需的热惯性，导致对气候突变的预测滞后约3个月。
+    *   **方案：** 分析确认相关性峰值在 **3个月**。模型现在正确使用3个月前的ENSO信号来预测当月气温。
+
+2.  **Critical Scaling Fix / 关键缩放修复**
+    *   **Fix:** Corrected a data parsing error where raw GISTEMP values (0.01°C) were treated as full degrees Celsius. All calculations now meaningfully reflect real-world physical units (°C).
+    *   **修复：** 修正了一个数据解析错误，该错误将原始GISTEMP值（0.01°C）视为摄氏度。现在的计算能正确反映真实的物理量级。
+
+3.  **Hybrid Evaluation Strategy / 混合评估策略**
+    *   **Innovation:** Instead of relying solely on global RMSE, the "Horse Race" now weights **Seasonal RMSE** (performance in the same target month) heavily (default 70%). This ensures the selected model is not just generally good, but specifically good for the season being predicted.
+    *   **创新：** “赛马”不再仅依赖全局RMSE，而是高度加权 **季节性RMSE**（目标月份的性能，默认70%）。这确保了所选模型不仅整体表现好，而且特别适合预测当前的季节。
+
+4.  **Residual Bias Correction / 残差偏差修正**
+    *   **Feature:** The model now looks back at the last 6 months of forecast performance. If a systematic bias (over/under-prediction) is detected, it automatically calibrates the future forecast to compensate.
+    *   **特性：** 模型现在会回溯过去6个月的预测表现。如果检测到系统性偏差（高估/低估），它会自动校准未来的预测以进行补偿。
+
 ---
 
 ## Core Workflow: The Adaptive Forecasting Strategy / 核心流程：自适应预测策略
@@ -64,12 +93,13 @@ pip install -r requirements.txt
 ```
 
 ### 3. Configuration / 配置
-Modify the `config.py` file to set your desired forecast target and prediction bins.
-修改 `config.py` 文件以设置您希望预测的目标年月和结果的分类区间。
+### 3. Configuration / 配置
+Modify the `config_robust.py` file to set your desired forecast target and prediction bins.
+修改 `config_robust.py` 文件以设置您希望预测的目标年月和结果的分类区间。
 ```python
 # 1. Target year and month to predict, format: YYYYMM
 # 1. 需要预测的年月，格式：YYYYMM
-TARGET_YYYYMM = "202509"
+TARGET_YYYYMM = "202601"
 
 # ... (other configurations) ...
 
@@ -87,7 +117,7 @@ PREDICTION_BINS = {
 Run the main script from the project's root directory:
 在项目根目录运行主脚本：
 ```bash
-python main.py
+python main_robust.py
 ```
 
 ---
@@ -114,60 +144,62 @@ The script will perform all steps automatically and print a detailed report.
 
 ## Example Output / 输出示例
 
-```bash
---- 数据准备阶段 (Data Preparation Stage) ---
-所有训练和测试将基于1970年之后的数据 (All training and testing will be based on data since 1970). 范围 (Range): 1970-01 to 2025-08
+=== 气候温度预测系统: 稳健增强版 (Robust Edition) ===
 
---- [第一部分 / Part 1] 开始执行“赛马”实验，寻找最优训练周期 (Starting "Horse Race" to find the optimal training period) ---
+ENSO Lag: 3 months
+数据范围 (Model Train): 1970-01 to 2025-12
 
---- 正在执行 (Executing): -18个月 赛道 (Lane) ---
-      训练集截止 (Train End): 2024-03, 测试集 (Test Set): 2024-04 to 2025-08
-      ...完成 (Completed)。RMSE: 10.13
+目标月份: 2026年01月 (第1月)
+=== 阶段1: 混合评估赛马 (Hybrid Evaluation) ===
+策略: 启用混合RMSE (季节性RMSE + 全局RMSE)
+基础季节性权重: 0.7
+------------------------------------------------------------
+窗口 -18月 | 样本数:1 | 全局RMSE: 0.13 | 同月RMSE: 0.24 | 混合RMSE: 0.16
+窗口 -24月 | 样本数:1 | 全局RMSE: 0.10 | 同月RMSE: 0.18 | 混合RMSE: 0.12
+窗口 -30月 | 样本数:2 | 全局RMSE: 0.21 | 同月RMSE: 0.24 | 混合RMSE: 0.23
+窗口 -36月 | 样本数:2 | 全局RMSE: 0.32 | 同月RMSE: 0.38 | 混合RMSE: 0.35
 
---- 正在执行 (Executing): -21个月 赛道 (Lane) ---
-      训练集截止 (Train End): 2023-12, 测试集 (Test Set): 2024-01 to 2025-08
-      ...完成 (Completed)。RMSE: 9.86
+--- 选入集成的 Top 4 模型 ---
+偏移 | 混合RMSE | 权重   
+-----|----------|--------
+-24月 |     0.12 |  50.8%
+-18月 |     0.16 |  28.3%
+-30月 |     0.23 |  14.7%
+-36月 |     0.35 |   6.2%
 
---- 正在执行 (Executing): -24个月 赛道 (Lane) ---
-      训练集截止 (Train End): 2023-09, 测试集 (Test Set): 2023-10 to 2025-08
-      ...完成 (Completed)。RMSE: 8.78
+=== 阶段2: 准备预测变量 (Steps=1) ===
+利用最新ENSO数据进行智能拼接...
 
---- 正在执行 (Executing): -27个月 赛道 (Lane) ---
-      训练集截止 (Train End): 2023-06, 测试集 (Test Set): 2023-07 to 2025-08
-      ...完成 (Completed)。RMSE: 22.09
+=== 阶段3.5: 残差偏差修正 (回溯 6 月) ===
+计算偏差窗口: 2025-07 到 2025-12
 
---- 正在执行 (Executing): -30个月 赛道 (Lane) ---
-      训练集截止 (Train End): 2023-03, 测试集 (Test Set): 2023-04 to 2025-08
-      ...完成 (Completed)。RMSE: 21.90
+=== 阶段3: 执行集成预测 & 偏差计算 ===
+模型1 (-24月):   1.10 (SD:0.11) | 近期偏差(6月): +0.017
+模型2 (-18月):   1.10 (SD:0.11) | 近期偏差(6月): +0.018
+模型3 (-30月):   1.06 (SD:0.11) | 近期偏差(6月): +0.121
+模型4 (-36月):   0.91 (SD:0.11) | 近期偏差(6月): +0.216
 
---- [第二部分 / Part 2] “赛马”实验完成，执行最终预测 (Horse Race complete, executing final forecast) ---
+基础集成预测值: 1.08
+加权残差偏差: +0.045
 
---- “赛马”结果总结 (Horse Race Results Summary) ---
-回测偏移 (Offset) | RMSE   | 胜出? (Champion?)
------------------|--------|-----------------
--18              | 10.13  |
--21              | 9.86   |
--24              | 8.78   |  * 
--27              | 22.09  |
--30              | 21.90  |
+=== 阶段4: 趋势稳定性检查与调整 ===
+短期趋势 (6月): 0.007/月
+长期趋势 (12月): -0.017/月
+✓ 趋势相对稳定，无需调整。
 
-冠军模型 (Champion Model): -24个月的训练周期 (training period), 训练至 (trained until) 2023-09).
-现在将使用此‘冠军’配置进行最终预测 (Now using this 'champion' configuration for the final forecast)...
+==================================================
+=== 最终稳健预测结果 (Robust Forecast) ===
+==================================================
+目标月份: 202601
+基础预测: 1.08
+偏差修正: +0.04
+最终预测: 1.13
+95%置信区间: [0.92, 1.33]
 
-正在为ENSO数据本身建立预测模型 (Building forecast model for ENSO data itself)...
-      ...动态预测出未来 1 个月的ENSO异常值为 (Dynamically forecasted ENSO anomaly for the next 1 month(s) is): -0.37
-
-正在使用冠军配置训练最终模型并进行预测 (Training and forecasting with champion configuration)...
-
---- 最终预测结果分析 (冠军模型) / Final Forecast Analysis (Champion Model) ---
-> 目标月份 (Target Month): 202509
-> 预测的期望值 (Predicted Mean): 123.73
-
---- 模型预测概率分布 (Model's Predicted Probability Distribution) ---
-  - 区间 (Bin) '<100': 1.04%
-  - 区间 (Bin) '100-104': 1.93%
-  - 区间 (Bin) '105-109': 4.43%
-  - 区间 (Bin) '110-114': 8.19%
-  - 区间 (Bin) '115-119': 12.21%
-  - 区间 (Bin) '>119': 67.08%
-```
+--- 预测概率分布 ---
+        <100: 10.27% █████
+     100-104:  9.21% ████
+     105-109: 13.04% ██████
+     110-114: 14.86% ███████
+     115-119: 13.63% ██████
+        >119: 27.11% █████████████
