@@ -30,7 +30,33 @@ This project utilizes two primary data sources:
 
 ---
 
-## Recent Updates: The "Robust" Methodology (Nov 2025) / 最新更新：“稳健”方法论 (2025.11)
+## Recent Updates: Statsmodels Enhanced Edition (Mar 2026) / 最新更新：Statsmodels 增强版 (2026.03)
+
+The project has been significantly upgraded with a new parallel system (`main_sm.py`) that leverages the advanced statistical capabilities of the `statsmodels` library, while completely preserving the integrity of the original robust pipeline.
+
+本项目实现了重大升级，新增了一套并行系统 (`main_sm.py`)。该系统深度融合了 `statsmodels` 库的高级统计分析能力，同时完整保留了原初的稳健预测流程。
+
+### Key Improvements in `main_sm.py` / `main_sm.py` 的关键改进
+
+1.  **Rigorous Stationarity Diagnostics / 严谨的平稳性诊断**
+    *   Automatic Augmented Dickey-Fuller (ADF) and KPSS tests evaluate the stationarity of Temperature and ENSO series before modeling, providing statistically sound recommendations for differencing (d-order).
+    *   自动执行 ADF 和 KPSS 假设检验，在建模前评估气温和 ENSO 序列的平稳性，为差分阶数(d)提供严谨的统计学建议。
+
+2.  **Multi-Algorithm "Horse Race" / 多算法“赛马”扩容**
+    *   The predictive ensemble now evaluates Exponential Smoothing (ETS / Holt-Winters) models alongside SARIMAX, increasing the robustness and diversity of the candidate pool.
+    *   除了 SARIMAX 之外，预测集成赛马现在还会将指数平滑法（ETS / Holt-Winters）纳入评估，增强了候选模型的稳健性和多样性。
+
+3.  **Comprehensive Residual Analysis / 全面的残差诊断**
+    *   Every candidate model's residuals are automatically scored using the Ljung-Box test (for autocorrelation) and the Jarque-Bera test (for normality), ensuring uncaptured patterns are identified.
+    *   所有候选模型的拟合残差都会自动进行 Ljung-Box (自相关) 和 Jarque-Bera (正态性) 检验，确保模型中未被捕获的时间模式能被识别。
+
+4.  **Advanced Output & Network Resilience / 进阶输出与网络韧性**
+    *   Provides structured Model Comparison Tables (AIC, BIC, RMSE). Includes an intelligent local caching system for ENSO data to automatically fail-over and prevent crashes when NOAA SSL servers are blocked or unavailable.
+    *   提供结构化的模型对比打分表（AIC, BIC, RMSE等）。引入了针对 ENSO 数据的智能本地缓存机制，在 NOAA 服务器 SSL 被阻断或网络超时时自动本地回退，确保预测脚本全天候稳定运行。
+
+---
+
+## Previous Updates: The "Robust" Methodology (Nov 2025) / 历史更新：“稳健”方法论 (2025.11)
 
 Based on the findings in `20251128.md` and `validation_report.md`, the project has evolved to a "Robust Edition" (`main_robust.py`) to address key physical and statistical disconnects found in earlier versions.
 
@@ -93,9 +119,8 @@ pip install -r requirements.txt
 ```
 
 ### 3. Configuration / 配置
-### 3. Configuration / 配置
-Modify the `config_robust.py` file to set your desired forecast target and prediction bins.
-修改 `config_robust.py` 文件以设置您希望预测的目标年月和结果的分类区间。
+Modify the `config_sm.py` (or `config_robust.py`) file to set your desired forecast target, prediction bins, and diagnostic toggles.
+修改 `config_sm.py` (或 `config_robust.py`) 文件以设置您希望预测的目标年月、结果的分类区间以及诊断开关。
 ```python
 # 1. Target year and month to predict, format: YYYYMM
 # 1. 需要预测的年月，格式：YYYYMM
@@ -116,6 +141,13 @@ PREDICTION_BINS = {
 ### 4. Execution / 执行
 Run the main script from the project's root directory:
 在项目根目录运行主脚本：
+
+To run the latest Statsmodels Enhanced Edition / 运行最新的 Statsmodels 增强版:
+```bash
+python main_sm.py
+```
+
+To run the legacy Robust Edition / 运行旧版的稳健版:
 ```bash
 python main_robust.py
 ```
@@ -144,7 +176,56 @@ The script will perform all steps automatically and print a detailed report.
 
 ## Example Output / 输出示例
 
+### Statsmodels Enhanced Edition / Statsmodels 增强版 (`main_sm.py`)
+
+```text
+============================================================
+  气候温度预测系统: Statsmodels 增强版
+  (SARIMAX + ETS | ADF/KPSS | Ljung-Box/Jarque-Bera)
+============================================================
+
+  [ENSO] 尝试从 NOAA 在线获取... ✗ (SSLError)
+  [ENSO] 使用本地缓存: enso_cache.txt
+
+=== 阶段0: 平稳性诊断 (ADF + KPSS) ===
+--------------------------------------------------
+  序列: Temperature Anomaly
+    ADF  统计量:  -1.2728  p=0.6415  未拒绝H0(非平稳)
+    KPSS 统计量:   3.6872  p=0.0100  拒绝H0(非平稳)
+    结论: 非平稳 → 建议 d=1
+  序列: ENSO (Lagged)
+    结论: 平稳 ✓
+
+=== 阶段1: 多模型赛马 (Hybrid Evaluation) ===
+候选模型类型: SARIMAX, ETS
+--------------------------------------------------
+  -24月 SARIMAX | (1, 1, 1)      | AIC: -1045.9 | 混合: 0.08 | LB-p=0.00✗ JB-p=0.29✓
+  ...
+
+--- 选入集成的 Top 4 模型 ---
+类型         偏移   混合RMSE       权重        AIC
+---------------------------------------------
+SARIMAX  -24月     0.08   62.5%    -1045.9
+...
+
+============================================================
+=== 最终预测结果 (Statsmodels Enhanced Edition) ===
+============================================================
+目标月份: 202602
+最终预测: 1.13
+95%置信区间: [0.92, 1.34]
+
+--- 集成模型对比表 ---
+ # 类型         偏移 阶数                      AIC        BIC   RMSE      权重
+----------------------------------------------------------------------
+ 1 SARIMAX  -24月 (1, 1, 1)           -1045.9    -1028.0   0.08  62.5%
+```
+
+### Legacy Robust Edition / 旧版稳健版 (`main_robust.py`)
+
+```text
 === 气候温度预测系统: 稳健增强版 (Robust Edition) ===
+
 
 ENSO Lag: 3 months
 数据范围 (Model Train): 1970-01 to 2025-12
