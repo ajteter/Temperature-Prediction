@@ -3,28 +3,28 @@
 # 继承 config_robust 的基础设置，新增 statsmodels 增强配置
 
 # --- 基础配置 (继承自 config_robust) ---
-TARGET_YYYYMM = "202602"
+TARGET_YYYYMM = "202603"
 DATA_FILE_PATH = "GLB.Ts+dSST.txt"
 ENSO_DATA_URL = "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensostuff/detrend.nino34.ascii.txt"
 RACE_SPLIT_MONTHS = [18, 24, 30, 36]
 OPTIMAL_ENSO_LAG = 3
 
 PREDICTION_BINS = {
-    '<105': (None, 105),
-    '105-109': (105, 109),
+    '<110': (None, 105),
     '110-114': (110, 114),
     '115-119': (115, 119),
     '120-124': (120, 124),
-    '>124': (124, None),
+    '125-129': (120, 124), 
+    '>129': (124, None),
 }
 
 MAINSTREAM_PROBS = {
-    '<105': 0.01,
-    '105-109': 0.03,
-    '110-114': 0.10,
-    '115-119': 0.64,
-    '120-124': 0.17,
-    '>124': 0.05,
+    '<110': 0.07,
+    '110-114': 0.14,
+    '115-119': 0.29,
+    '120-124': 0.30,
+    '125-129': 0.15, 
+    '>129': 0.06,
 }
 
 # --- A. 混合评估策略 (继承) ---
