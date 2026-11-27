@@ -25,3 +25,4 @@ enso_cache.txt
 
 # Agent / AI local directories (optional)
 .gemini/
+.DS_Store
